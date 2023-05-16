@@ -62,7 +62,7 @@ class SurveyInformation extends StatelessWidget {
                         itemBuilder: (context, index) => TraineeCard(
                             traineeInfo: information.data!.trainees![index]),
                       ))
-                  : Text("No Data Found"),
+                  : const Text("No Data Found"),
             ],
           ),
         ),

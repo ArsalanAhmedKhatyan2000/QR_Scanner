@@ -34,7 +34,7 @@ class QrVerifyRepoditory {
           "http://ec2-35-74-182-67.ap-northeast-1.compute.amazonaws.com:4000/organization/verify");
       var response = await http.post(
         url,
-        body: jsonEncode({"qrCode": code}),
+        body: json.encode({"qrCode": code}),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },

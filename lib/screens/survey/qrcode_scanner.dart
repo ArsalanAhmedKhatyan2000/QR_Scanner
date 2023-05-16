@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +27,9 @@ class _QRCodeScannerScreenState extends State<QRCodeScannerScreen> {
   TextEditingController? controller4 = TextEditingController();
   //qr
   void qr(QRViewController? controller) {
-    _controller = controller;
+    setState(() {
+      _controller = controller;
+    });
     _controller?.scannedDataStream.listen((event) {
       // _result != null ? _controller?.stopCamera() : _controller?.resumeCamera();
       setState(() {
@@ -37,36 +38,47 @@ class _QRCodeScannerScreenState extends State<QRCodeScannerScreen> {
     });
   }
 
-  // In order to get hot reload to work we need to pause the camera if the platform
+// In order to get hot reload to work we need to pause the camera if the platform
   // is android, or resume the camera if the platform is iOS.
   @override
-  void reassemble() {
+  void reassemble() async {
     super.reassemble();
-    if (Platform.isAndroid) {
-      _controller!.resumeCamera();
-    } else if (Platform.isIOS) {
-      _controller!.resumeCamera();
+    if (_controller != null) {
+      debugPrint('reassemble : $_controller');
+      if (Platform.isAndroid) {
+        await _controller!.pauseCamera();
+      } else if (Platform.isIOS) {
+        await _controller!.resumeCamera();
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 
   void readQr() async {
     if (_result != null) {
       _controller!.pauseCamera();
-      print(_result!.code);
       _controller!.dispose();
     }
   }
 
   bool isLoading = false;
+  reloadCamera() async {
+    // for auto hot reload
+    // _controller != null && mounted
+    if (_controller != null && mounted) {
+      await _controller!.resumeCamera();
+      setState(() {});
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // for auto hot reload
-    if (_controller != null && mounted) {
-      setState(() {
-        _controller!.resumeCamera();
-      });
-    }
+    reloadCamera();
     return Scaffold(
       body: SingleChildScrollView(
         child: Stack(
@@ -96,25 +108,35 @@ class _QRCodeScannerScreenState extends State<QRCodeScannerScreen> {
                           setState(() {
                             isLoading = true;
                           });
-                          final id = jsonDecode(_result!.code.toString())['id'];
+                          final code =
+                              jsonDecode(_result!.code.toString())['qrCode'];
                           setState(() {
                             _result = null;
                           });
                           final informationController =
                               Provider.of<InformationController>(context,
                                   listen: false);
-                          await informationController.fetchInformation(
-                              context: context, id: id.toString());
+                          await informationController
+                              .postCodeAndFetchInformation(
+                                  context: context,
+                                  code: code.trim().toString());
+                          // await informationController.fetchInformation(
+                          //     context: context, id: id.toString());
                           setState(() {
                             isLoading = false;
                           });
                         },
                       )
                     : Text(
-                        "Scan Qr Code\nOR\nEnter the secret code",
+                        "Scan Qr Code",
                         textAlign: TextAlign.center,
                         style: TextStyle(fontSize: 20.sp),
                       ),
+                Text(
+                  "OR\nEnter the secret code",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 20.sp),
+                ),
                 SizedBox(height: 20.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -151,7 +173,7 @@ class _QRCodeScannerScreenState extends State<QRCodeScannerScreen> {
               ],
             ),
             isLoading == true
-                ? Container(
+                ? SizedBox(
                     height: 1.sh,
                     width: 1.sw,
                     child: Column(
@@ -170,11 +192,5 @@ class _QRCodeScannerScreenState extends State<QRCodeScannerScreen> {
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
   }
 }
